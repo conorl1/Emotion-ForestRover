@@ -11,5 +11,5 @@ The algorithm is made up of several parts, including:
 - The emotion model, which modulates the behaviours
 
 ## To do:
-Add back in the code producing the data log file
-Upload the script that creates graphs from the data log
+Add back in the code producing the data log file.
+Upload the script that creates graphs from the data log.
