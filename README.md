@@ -12,4 +12,5 @@ The algorithm is made up of several parts, including:
 
 ## To do:
 Add back in the code producing the data log file.
+
 Upload the script that creates graphs from the data log.
