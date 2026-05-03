@@ -4,6 +4,7 @@
 
 import time
 import os
+from datetime import datetime
 import numpy as np
 import math
 import cv2 as cv
@@ -18,11 +19,15 @@ rolls = [0,0,0]
 acc_xs = [0]
 acc_ys = [0.1,0.1,0.1]
 acc_zs = [0]
+gyro_xs = [0]
+gyro_ys = [0]
+gyro_zs = [0]
 top_bottom_brightnesses = [26,26,26]
 left_right_brightnesses = [0]
 similarities = [40]
 collision_rate = [0]
 
+ALGORITHM_INTERVAL = 0.05
 COLLISION_THRESHOLD = 10
 GOAL_THRESHOLD = 0.98
 SIMILARITY_THRESHOLD = 40 # Found
@@ -134,6 +139,9 @@ config_params["happiness"] = bool(int(config.readline()))
 
 data_dir = str(time.time())
 path = os.path.join(parent_dir, data_dir)
+os.mkdir(path)
+data_file = os.path.join(path, "robot_data.txt")
+robot_data = open(data_file, 'a', buffering=1)
 
 interval = 0.05
 
@@ -896,44 +904,143 @@ def getSpeedAndSteering(parameters):
     elif direction == 6:
         return parameters["turn_speed"], -parameters["turn_amount"] # Forwards Left
     
+# The following code has been adapted to remove code specific to the rover and controller used in the project
+
 def captureImage(file_path):
     # Add code for the specific camera used
     return
 
 def getSensorData():
     # Add code to retrieve data from the specific sensor used
-    return 0, 0, 0, 0, 0, 0
+    return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 def setMotors(speed, steering):
     # Add code to process the speed and steering values and apply to the motors of the specific rover used
     return
 
+def getControllerSpeedAndSteering():
+    #  Add code to get the speed and steering values from the joystick
+    return 0, 0
+
+def getControllerButtonPresses():
+    # Add code to return list of meanings from button presses on controller
+    return []
+
 # Start the image processing thread
 Thread(target=imageDataLoop).start()
 
-# The following code has been adapted to remove code specific to the rover and controller used in the project
-# With a controller, the rover could be stopped with the press of a button, exiting the loop
-# Another button could switch between following the algorithm and responding to joystick input
-while True:
-    
-    ######
+drive = True
+use_algorithm = False
+
+while drive: 
+    presses = getControllerButtonPresses()
+
+    if "stop" in presses:
+        drive = False
+
+    if "use_joystick" in presses:
+        use_algorithm = False
+        interval = 0.25
+        robot_data.write(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + '\t' + " Using Controller " + "\n")
+
+    if "use_algorithm" in presses:
+        use_algorithm = True
+        interval = ALGORITHM_INTERVAL
+        robot_data.write(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + '\t' + " Using Algorithm " + "\n")
+
     speed = 0
     steering = 0
 
-    speed, steering = getSpeedAndSteering(parameters)
+    if use_algorithm:
+        speed, steering = getSpeedAndSteering(parameters)
+    else:
+        speed, steering = getControllerSpeedAndSteering()
 
     print("Speed: ", speed, ", Steering: ", steering)
 
     if speed != 0: # Only capture data when rover is moving
         moving = True
 
-        bearing, pitch, roll, acc_x, acc_y, acc_z = getSensorData()
+        bearing, pitch, roll, acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z, accmeter_x, accmeter_y, accmeter_z = getSensorData()
         bearings.insert(0, bearing)
         pitches.insert(0, pitch)
         rolls.insert(0, roll)
         acc_xs.insert(0, acc_x)
         acc_ys.insert(0, acc_y)
         acc_zs.insert(0, acc_z)
+        gyro_xs.insert(0, gyro_x)
+        gyro_ys.insert(0, gyro_y)
+        gyro_zs.insert(0, gyro_z)
+
+        with data_index_lock:
+            data_index = parameters["data_index"]
+        with similarities_lock:
+            similarity = similarities[0]
+        with horizontal_lock:
+            horizontal_brightness = left_right_brightnesses[0]
+        with vertical_lock:
+            vertical_brightness = top_bottom_brightnesses[0]
+            
+        robot_data.write(datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + '\t' + str(data_index) + '\t' + str(driveLeft) + '\t' + str(driveRight) + 
+        '\t ----- \t' + str(bearing) + # compass bearing   
+        ' ' + str(pitch) + # pitch angle   
+        ' ' + str(roll) + # roll angle    
+
+        '\t ----- \t' + str(round(acc_x, 2)) + # Linear acceleration Axis X
+        ' ' + str(round(acc_y, 2)) + # Linear acceleration Axis Y
+        ' ' + str(round(acc_z, 2)) + # Linear acceleration Axis Z       
+        '\t ----- \t' + str(round(gyro_x, 2)) + # Gyroscope raw X axis output
+        ' ' + str(round(gyro_y, 2)) + # Gyroscope raw Y axis output
+        ' ' + str(round(gyro_z, 2)) + # Gyroscope raw Z axis output
+        '\t ----- \t' + str(round(accmeter_x, 2)) + #accelerometer Axis X
+        ' ' + str(round(accmeter_y, 2)) + # accelerometer Axis Y
+        ' ' + str(round(accmeter_z, 2)) + # accelerometer Axis Z
+
+        '\t ----- \t' + str(parameters["current_behaviour"]) +
+        ' ' + str(parameters["time_doing_behaviour"]) +
+        ' ' + str(parameters["default_behaviour_length"]) +
+        ' ' + str(parameters["behaviour_length"]) +
+        ' ' + str(parameters["time_since_behaviour_started"]) +
+        ' ' + str(parameters["suggested_behaviour"]) +
+        ' ' + str(parameters["current_trapped_behaviour"]) +
+        '\t ----- \t' + str(vertical_brightness) + 
+        ' ' + str(similarity) +
+        ' ' + str(horizontal_brightness) +
+        '\t ----- \t' + str(parameters["trapped"]) +
+        ' ' + str(parameters["stuck"]) + 
+        ' ' + str(parameters["time_trapped"]) +
+        ' ' + str(parameters["time_free"]) +
+        '\t ----- \t' + str(parameters["time_since_collision"]) +
+        ' ' + str(parameters["collision_count"]) +
+        ' ' + str(parameters["collision_rate"]) +
+        ' ' + str(parameters["collision"]) +
+        ' ' + str(parameters["reacted"]) +
+        '\t ----- \t' + str(parameters["pitch_threshold"]) +
+        ' ' + str(parameters["probe_angle"]) +
+        ' ' + str(parameters["back_out_distance"]) +
+        ' ' + str(parameters["extra_probe_angle"]) +
+        ' ' + str(parameters["roll_on_obstacle"]) +
+        ' ' + str(parameters["how_long_dark"]) +
+        ' ' + str(parameters["probe_direction"]) +
+        ' ' + str(parameters["probe_direction_time"]) +
+        ' ' + str(parameters["previous_probe_length"]) +
+        ' ' + str(parameters["bearing_turning_to"]) +
+        ' ' + str(parameters["bearing_turned_from"]) +
+        ' ' + str(parameters["turning"]) +
+        ' ' + str(parameters["reversed_by"]) +
+        ' ' + str(parameters["obstacle_type"]) +
+        ' ' + str(parameters["time_similar"]) +
+        '\t ----- \t' + str(parameters["speed"]) +
+        ' ' + str(parameters["turn_speed"]) +
+        ' ' + str(parameters["turn_amount"]) +
+        ' ' + str(parameters["direction"]) +
+        ' ' + str(parameters["side"]) +
+        '\t ----- \t' + str(emotions["anger"]) +
+        ' ' + str(emotions["boredom"]) +
+        ' ' + str(emotions["fear"]) +
+        ' ' + str(emotions["happiness"]) +
+        '\t ----- \t' + str(parameters["iter_index"]) +
+        '\n')
     
     else:
         moving = False
@@ -944,5 +1051,7 @@ while True:
 
     driveLeft = 0
     driveRight = 0
-                    
+
+robot_data.close()                 
 process_loop = False
+print("Exiting")
