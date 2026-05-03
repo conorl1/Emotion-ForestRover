@@ -1,7 +1,7 @@
 # Emotion-ForestRover
 Code for an emotion modulated algorithm for robot recovery from entrapment areas in forest environments
 
-This repository shows some of the code from my third year university project that formed my dissertation. The python script emotion_robot.py is the main script that ran on the rover, however the code specific to the hardware of the rover that was used in the project, and the controller that was used to start and stop the rover, and take over driving using the joystick during testing has been removed from the script, as this code was not written by me. This does mean, however that the algorithm itself to be seen more clearly, and that code could be added in to allow this algorithm to work on a different robot, so long as it has an IMU sensor and a camera.
+This repository shows some of the code from my third year university project that formed my dissertation. The python script emotion_robot.py is the main script that ran on the rover, however the code specific to the hardware of the rover that was used in the project, and the controller that was used to start and stop the rover, and take over driving using the joystick during testing, has been removed from the script as this code was not written by me. This does mean, however that the algorithm itself to be seen more clearly, and that code could be added in to allow this algorithm to work on a different robot, so long as it has an IMU sensor and a camera.
 
 The algorithm is made up of several parts, including:
 - Interpreting sensor data
@@ -10,7 +10,6 @@ The algorithm is made up of several parts, including:
 - Behaviours for the rover to perform
 - The emotion model, which modulates the behaviours
 
-## To do:
-Add back in the code producing the data log file.
+The script also outputs sensor data and other data computed to a log file.
 
-Upload the script that creates graphs from the data log.
+The script create_graphs.py contains code to read in data from these log files, code to plot graphs of the data, and code to create box plots of metrics computed from data from multiple log files.
